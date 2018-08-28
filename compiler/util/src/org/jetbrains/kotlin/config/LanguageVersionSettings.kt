@@ -88,6 +88,7 @@ enum class LanguageFeature(
     SoundSmartcastFromLoopConditionForLoopAssignedVariables(KOTLIN_1_3, kind = BUG_FIX),
     DslMarkerOnFunctionTypeReceiver(KOTLIN_1_4, kind = BUG_FIX),
     ProhibitErroneousExpressionsInAnnotationsWithUseSiteTargets(KOTLIN_1_3, kind = BUG_FIX),
+    NewCapturedReceiverFieldNamingConvention(KOTLIN_1_3, kind = UNSTABLE_FEATURE),
 
     RestrictReturnStatementTarget(KOTLIN_1_4, kind = BUG_FIX),
     ProperIeee754Comparisons(sinceVersion = null, defaultState = State.DISABLED, kind = BUG_FIX),
