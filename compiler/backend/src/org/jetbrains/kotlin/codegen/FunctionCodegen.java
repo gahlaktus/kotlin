@@ -1136,32 +1136,35 @@ public class FunctionCodegen {
 
     @NotNull
     public static String[] getThrownExceptions(@NotNull FunctionDescriptor function, @NotNull KotlinTypeMapper mapper) {
+        return ArrayUtil.toStringArray(CollectionsKt.map(getThrownExceptions(function), d -> mapper.mapClass(d).getInternalName()));
+    }
+
+    @NotNull
+    public static List<ClassDescriptor> getThrownExceptions(@NotNull FunctionDescriptor function) {
         AnnotationDescriptor annotation = function.getAnnotations().findAnnotation(new FqName("kotlin.throws"));
         if (annotation == null) {
             annotation = function.getAnnotations().findAnnotation(new FqName("kotlin.jvm.Throws"));
         }
 
-        if (annotation == null) return ArrayUtil.EMPTY_STRING_ARRAY;
+        if (annotation == null) return Collections.emptyList();
 
         Collection<ConstantValue<?>> values = annotation.getAllValueArguments().values();
-        if (values.isEmpty()) return ArrayUtil.EMPTY_STRING_ARRAY;
+        if (values.isEmpty()) return Collections.emptyList();
 
         Object value = values.iterator().next();
-        if (!(value instanceof ArrayValue)) return ArrayUtil.EMPTY_STRING_ARRAY;
+        if (!(value instanceof ArrayValue)) return Collections.emptyList();
         ArrayValue arrayValue = (ArrayValue) value;
 
-        List<String> strings = CollectionsKt.mapNotNull(
+        return CollectionsKt.mapNotNull(
                 arrayValue.getValue(),
                 (ConstantValue<?> constant) -> {
                     if (constant instanceof KClassValue) {
                         KClassValue classValue = (KClassValue) constant;
-                        ClassDescriptor classDescriptor = DescriptorUtils.getClassDescriptorForType(classValue.getValue());
-                        return mapper.mapClass(classDescriptor).getInternalName();
+                        return DescriptorUtils.getClassDescriptorForType(classValue.getValue());
                     }
                     return null;
                 }
         );
-        return ArrayUtil.toStringArray(strings);
     }
 
     void generateDefaultIfNeeded(
