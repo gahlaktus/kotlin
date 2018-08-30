@@ -1,0 +1,3 @@
+package absent
+
+actual class My

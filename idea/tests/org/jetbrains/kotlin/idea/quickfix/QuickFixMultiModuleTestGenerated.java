@@ -104,6 +104,21 @@ public class QuickFixMultiModuleTestGenerated extends AbstractQuickFixMultiModul
         runTest("idea/testData/multiModuleQuickFix/classFunctionWithIncompatibleConstructor/");
     }
 
+    @TestMetadata("classNoChildPackageJs")
+    public void testClassNoChildPackageJs() throws Exception {
+        runTest("idea/testData/multiModuleQuickFix/classNoChildPackageJs/");
+    }
+
+    @TestMetadata("classNoPackageJs")
+    public void testClassNoPackageJs() throws Exception {
+        runTest("idea/testData/multiModuleQuickFix/classNoPackageJs/");
+    }
+
+    @TestMetadata("classNoPackageJvm")
+    public void testClassNoPackageJvm() throws Exception {
+        runTest("idea/testData/multiModuleQuickFix/classNoPackageJvm/");
+    }
+
     @TestMetadata("classOverloadedFunction")
     public void testClassOverloadedFunction() throws Exception {
         runTest("idea/testData/multiModuleQuickFix/classOverloadedFunction/");
