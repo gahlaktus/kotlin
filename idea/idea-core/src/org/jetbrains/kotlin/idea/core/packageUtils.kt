@@ -25,6 +25,7 @@ import org.jetbrains.kotlin.idea.util.rootManager
 import org.jetbrains.kotlin.idea.util.sourceRoot
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.psi.KtFile
+import org.jetbrains.kotlin.utils.addIfNotNull
 import java.io.File
 
 fun PsiDirectory.getPackage(): PsiPackage? = JavaDirectoryService.getInstance()!!.getPackage(this)
@@ -79,18 +80,30 @@ private fun findLongestExistingPackage(module: Module, packageName: String): Psi
 private val kotlinSourceRootTypes: Set<JpsModuleSourceRootType<JavaSourceRootProperties>> =
     setOf(KotlinSourceRootType.Source, KotlinSourceRootType.TestSource) + JavaModuleSourceRootTypes.SOURCES
 
-private fun Module.getKotlinSourceRoots(): List<VirtualFile> =
-    ModuleRootManager.getInstance(this).getSourceRoots(kotlinSourceRootTypes)
+private fun Module.getNonGeneratedKotlinSourceRoots(): List<VirtualFile> {
+    val result = mutableListOf<VirtualFile>()
+    val rootManager = ModuleRootManager.getInstance(this)
+    for (contentEntry in rootManager.contentEntries) {
+        val sourceFolders = contentEntry.getSourceFolders(kotlinSourceRootTypes)
+        for (sourceFolder in sourceFolders) {
+            if (sourceFolder.jpsElement.getProperties(kotlinSourceRootTypes)?.isForGeneratedSources == true) {
+                continue
+            }
+            result.addIfNotNull(sourceFolder.file)
+        }
+    }
+    return result
+}
 
 private fun Module.getOrConfigureKotlinSourceRoots(): List<VirtualFile> {
-    val sourceRoots = getKotlinSourceRoots()
+    val sourceRoots = getNonGeneratedKotlinSourceRoots()
     if (sourceRoots.isNotEmpty()) {
         return sourceRoots
     }
     return runWriteAction {
         val rootDir = rootManager.contentRoots.firstOrNull()
         rootDir?.createChildDirectory(project, "kotlin")
-        getKotlinSourceRoots()
+        getNonGeneratedKotlinSourceRoots()
     }
 }
 
