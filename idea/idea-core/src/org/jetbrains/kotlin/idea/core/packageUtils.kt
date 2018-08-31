@@ -6,7 +6,6 @@
 package org.jetbrains.kotlin.idea.core
 
 import com.intellij.ide.util.DirectoryChooserUtil
-import com.intellij.ide.util.PackageUtil
 import com.intellij.openapi.application.WriteAction
 import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.module.Module
@@ -22,11 +21,9 @@ import org.jetbrains.jps.model.java.JavaSourceRootProperties
 import org.jetbrains.jps.model.module.JpsModuleSourceRootType
 import org.jetbrains.kotlin.config.KotlinSourceRootType
 import org.jetbrains.kotlin.idea.caches.PerModulePackageCacheService
-import org.jetbrains.kotlin.idea.project.platform
 import org.jetbrains.kotlin.idea.util.rootManager
 import org.jetbrains.kotlin.idea.util.sourceRoot
 import org.jetbrains.kotlin.name.FqName
-import org.jetbrains.kotlin.platform.impl.isJvm
 import org.jetbrains.kotlin.psi.KtFile
 import java.io.File
 
@@ -102,9 +99,6 @@ private fun getPackageDirectoriesInModule(rootPackage: PsiPackage, module: Modul
 
 // This is Kotlin version of PackageUtil.findOrCreateDirectoryForPackage
 fun findOrCreateDirectoryForPackage(module: Module, packageName: String): PsiDirectory? {
-    if (module.platform.isJvm) {
-        return PackageUtil.findOrCreateDirectoryForPackage(module, packageName, /* baseDir = */null, /* askUserToCreate = */false)
-    }
     val project = module.project
     var existingDirectoryByPackage: PsiDirectory? = null
     if (!packageName.isEmpty()) {
