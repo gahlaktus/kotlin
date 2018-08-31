@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.idea.core
 import com.intellij.ide.util.DirectoryChooserUtil
 import com.intellij.ide.util.PackageUtil
 import com.intellij.openapi.application.WriteAction
+import com.intellij.openapi.application.runWriteAction
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.module.ModuleUtil
 import com.intellij.openapi.roots.ModulePackageIndex
@@ -22,6 +23,7 @@ import org.jetbrains.jps.model.module.JpsModuleSourceRootType
 import org.jetbrains.kotlin.config.KotlinSourceRootType
 import org.jetbrains.kotlin.idea.caches.PerModulePackageCacheService
 import org.jetbrains.kotlin.idea.project.platform
+import org.jetbrains.kotlin.idea.util.rootManager
 import org.jetbrains.kotlin.idea.util.sourceRoot
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.platform.impl.isJvm
@@ -80,8 +82,20 @@ private fun findLongestExistingPackage(module: Module, packageName: String): Psi
 private val kotlinSourceRootTypes: Set<JpsModuleSourceRootType<JavaSourceRootProperties>> =
     setOf(KotlinSourceRootType.Source, KotlinSourceRootType.TestSource) + JavaModuleSourceRootTypes.SOURCES
 
-private fun Module.getSourceRoots(): List<VirtualFile> =
+private fun Module.getKotlinSourceRoots(): List<VirtualFile> =
     ModuleRootManager.getInstance(this).getSourceRoots(kotlinSourceRootTypes)
+
+private fun Module.getOrConfigureKotlinSourceRoots(): List<VirtualFile> {
+    val sourceRoots = getKotlinSourceRoots()
+    if (sourceRoots.isNotEmpty()) {
+        return sourceRoots
+    }
+    return runWriteAction {
+        val rootDir = rootManager.contentRoots.firstOrNull()
+        rootDir?.createChildDirectory(project, "kotlin")
+        getKotlinSourceRoots()
+    }
+}
 
 private fun getPackageDirectoriesInModule(rootPackage: PsiPackage, module: Module): Array<PsiDirectory> =
     rootPackage.getDirectories(GlobalSearchScope.moduleScope(module))
@@ -109,7 +123,7 @@ fun findOrCreateDirectoryForPackage(module: Module, packageName: String): PsiDir
     }
 
     val existingDirectory = existingDirectoryByPackage ?: run {
-        val sourceRoots = module.getSourceRoots()
+        val sourceRoots = module.getOrConfigureKotlinSourceRoots()
         if (sourceRoots.isEmpty()) {
             return null
         }
