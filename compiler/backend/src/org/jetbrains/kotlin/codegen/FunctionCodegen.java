@@ -59,6 +59,7 @@ import org.jetbrains.kotlin.resolve.jvm.jvmSignature.JvmMethodParameterSignature
 import org.jetbrains.kotlin.resolve.jvm.jvmSignature.JvmMethodSignature;
 import org.jetbrains.kotlin.types.KotlinType;
 import org.jetbrains.kotlin.types.TypeUtils;
+import org.jetbrains.kotlin.util.MemberUtilsKt;
 import org.jetbrains.org.objectweb.asm.*;
 import org.jetbrains.org.objectweb.asm.commons.InstructionAdapter;
 import org.jetbrains.org.objectweb.asm.commons.Method;
@@ -72,6 +73,7 @@ import static org.jetbrains.kotlin.builtins.KotlinBuiltIns.isNullableAny;
 import static org.jetbrains.kotlin.codegen.AsmUtil.*;
 import static org.jetbrains.kotlin.codegen.serialization.JvmSerializationBindings.METHOD_FOR_FUNCTION;
 import static org.jetbrains.kotlin.descriptors.CallableMemberDescriptor.Kind.DECLARATION;
+import static org.jetbrains.kotlin.descriptors.CallableMemberDescriptor.Kind.FAKE_OVERRIDE;
 import static org.jetbrains.kotlin.descriptors.ModalityKt.isOverridable;
 import static org.jetbrains.kotlin.descriptors.annotations.AnnotationUseSiteTarget.*;
 import static org.jetbrains.kotlin.descriptors.annotations.AnnotationUtilKt.isEffectivelyInlineOnly;
@@ -747,9 +749,11 @@ public class FunctionCodegen {
             @NotNull MethodContext context,
             @NotNull JvmDefaultMode jvmDefaultMode
     ) {
-        return OwnerKind.DEFAULT_IMPLS == context.getContextKind() &&
-               hasJvmDefaultAnnotation(functionDescriptor) &&
-               jvmDefaultMode.isCompatibility();
+        if (OwnerKind.DEFAULT_IMPLS == context.getContextKind() && jvmDefaultMode.isCompatibility()) {
+            CallableMemberDescriptor realMember = MemberUtilsKt.findImplementationFromInterface(functionDescriptor) ;
+            return realMember != null && hasJvmDefaultAnnotation(realMember);
+        }
+        return false;
     }
 
     private static void generateLocalVariableTable(

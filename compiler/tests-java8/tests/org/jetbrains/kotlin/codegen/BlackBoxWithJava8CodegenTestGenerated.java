@@ -538,6 +538,16 @@ public class BlackBoxWithJava8CodegenTestGenerated extends AbstractBlackBoxCodeg
                     runTest("compiler/testData/codegen/java8/box/jvm8/defaults/compatibility/defaultArgs.kt");
                 }
 
+                @TestMetadata("diamondFun.kt")
+                public void testDiamondFun() throws Exception {
+                    runTest("compiler/testData/codegen/java8/box/jvm8/defaults/compatibility/diamondFun.kt");
+                }
+
+                @TestMetadata("diamondProperty.kt")
+                public void testDiamondProperty() throws Exception {
+                    runTest("compiler/testData/codegen/java8/box/jvm8/defaults/compatibility/diamondProperty.kt");
+                }
+
                 @TestMetadata("inheritedJvmDefault.kt")
                 public void testInheritedJvmDefault() throws Exception {
                     runTest("compiler/testData/codegen/java8/box/jvm8/defaults/compatibility/inheritedJvmDefault.kt");

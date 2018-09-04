@@ -67,6 +67,7 @@ import static org.jetbrains.kotlin.resolve.jvm.AsmTypes.*;
 import static org.jetbrains.kotlin.resolve.jvm.annotations.JvmAnnotationUtilKt.hasJvmDefaultAnnotation;
 import static org.jetbrains.kotlin.resolve.jvm.diagnostics.JvmDeclarationOrigin.NO_ORIGIN;
 import static org.jetbrains.kotlin.resolve.jvm.diagnostics.JvmDeclarationOriginKt.Synthetic;
+import static org.jetbrains.kotlin.util.MemberUtilsKt.findImplementationFromInterface;
 import static org.jetbrains.org.objectweb.asm.Opcodes.*;
 
 public abstract class MemberCodegen<T extends KtPureElement/* TODO: & KtDeclarationContainer*/> implements InnerClassConsumer {
@@ -694,12 +695,12 @@ public abstract class MemberCodegen<T extends KtPureElement/* TODO: & KtDeclarat
 
     protected final void generateSyntheticAccessors() {
         for (AccessorForCallableDescriptor<?> accessor : ((CodegenContext<?>) context).getAccessors()) {
-            boolean hasJvmDefaultAnnotation = hasJvmDefaultAnnotation(accessor.getCalleeDescriptor());
+            boolean isJvmDefaultAccessorInInterface = accessor.getAccessorKind() == AccessorKind.JVM_DEFAULT_COMPATIBILITY;
             OwnerKind kind = context.getContextKind();
 
             if (!isInterface(context.getContextDescriptor()) ||
-                (hasJvmDefaultAnnotation && kind == OwnerKind.IMPLEMENTATION) ||
-                (!hasJvmDefaultAnnotation && kind == OwnerKind.DEFAULT_IMPLS)) {
+                (isJvmDefaultAccessorInInterface && kind == OwnerKind.IMPLEMENTATION) ||
+                (!isJvmDefaultAccessorInInterface && kind == OwnerKind.DEFAULT_IMPLS)) {
                 generateSyntheticAccessor(accessor);
             }
         }
@@ -745,12 +746,15 @@ public abstract class MemberCodegen<T extends KtPureElement/* TODO: & KtDeclarat
                         public void doGenerateBody(@NotNull ExpressionCodegen codegen, @NotNull JvmMethodSignature signature) {
                             markLineNumberForElement(element.getPsiOrParent(), codegen.v);
                             if (accessorForCallableDescriptor.getAccessorKind() == AccessorKind.JVM_DEFAULT_COMPATIBILITY) {
-                                FunctionDescriptor descriptor = unwrapFakeOverrideToAnyDeclaration(original).getOriginal();
+                                CallableMemberDescriptor realImplementation = findImplementationFromInterface(original);
+                                assert realImplementation != null : "Can't find implementation for " + original;
+                                FunctionDescriptor descriptor = (FunctionDescriptor) realImplementation.getOriginal();
                                 if (descriptor != original) {
                                     descriptor = descriptor
                                             .copy(original.getContainingDeclaration(), descriptor.getModality(), descriptor.getVisibility(),
                                                   descriptor.getKind(), false);
                                 }
+                                //TODO this
                                 generateMethodCallTo(descriptor, accessor, codegen.v).coerceTo(signature.getReturnType(), null, codegen.v);
                             }
                             else {

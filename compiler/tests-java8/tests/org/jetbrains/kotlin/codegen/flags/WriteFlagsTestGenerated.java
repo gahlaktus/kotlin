@@ -88,6 +88,16 @@ public class WriteFlagsTestGenerated extends AbstractWriteFlagsTest {
                 KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("compiler/testData/codegen/java8/writeFlags/defaults/compatibility"), Pattern.compile("^(.+)\\.kt$"), TargetBackend.ANY, true);
             }
 
+            @TestMetadata("defaultMethodInDiamond.kt")
+            public void testDefaultMethodInDiamond() throws Exception {
+                runTest("compiler/testData/codegen/java8/writeFlags/defaults/compatibility/defaultMethodInDiamond.kt");
+            }
+
+            @TestMetadata("defaultPropertyInDiamond.kt")
+            public void testDefaultPropertyInDiamond() throws Exception {
+                runTest("compiler/testData/codegen/java8/writeFlags/defaults/compatibility/defaultPropertyInDiamond.kt");
+            }
+
             @TestMetadata("propertyAccessors.kt")
             public void testPropertyAccessors() throws Exception {
                 runTest("compiler/testData/codegen/java8/writeFlags/defaults/compatibility/propertyAccessors.kt");
