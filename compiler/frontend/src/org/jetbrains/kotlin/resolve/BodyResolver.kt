@@ -16,7 +16,6 @@
 
 package org.jetbrains.kotlin.resolve
 
-import com.google.common.collect.Maps
 import com.intellij.openapi.project.Project
 import com.intellij.util.containers.Queue
 import kotlin.collections.*
@@ -48,7 +47,6 @@ import org.jetbrains.kotlin.diagnostics.Errors.*
 import org.jetbrains.kotlin.resolve.BindingContext.*
 import org.jetbrains.kotlin.resolve.descriptorUtil.isEffectivelyExternal
 import org.jetbrains.kotlin.types.TypeUtils.NO_EXPECTED_TYPE
-import java.util.HashSet
 
 class BodyResolver(
     private val project: Project,
@@ -91,7 +89,7 @@ class BodyResolver(
             resolveSecondaryConstructorBody(c.outerDataFlowInfo, trace, key, value, declaringScope)
         }
         if (c.secondaryConstructors.isEmpty()) return
-        val visitedConstructors = HashSet<ConstructorDescriptor>()
+        val visitedConstructors = hashSetOf<ConstructorDescriptor>()
         for ((_, value) in c.secondaryConstructors) {
             checkCyclicConstructorDelegationCall(value, visitedConstructors)
         }
@@ -106,18 +104,18 @@ class BodyResolver(
     ) {
         ForceResolveUtil.forceResolveAllContents(descriptor.annotations)
 
-        resolveFunctionBody(outerDataFlowInfo, trace, constructor, descriptor, declaringScope,
-                            { headerInnerScope ->
-                                resolveSecondaryConstructorDelegationCall(
-                                    outerDataFlowInfo, trace, headerInnerScope, constructor, descriptor
-                                )
-                            },
-                            { scope ->
-                                LexicalScopeImpl(
-                                    scope, descriptor, scope.isOwnerDescriptorAccessibleByLabel, scope.implicitReceiver,
-                                    LexicalScopeKind.CONSTRUCTOR_HEADER
-                                )
-                            })
+        resolveFunctionBodyInternal(outerDataFlowInfo, trace, constructor, descriptor, declaringScope,
+                                    { headerInnerScope ->
+                                        resolveSecondaryConstructorDelegationCall(
+                                            outerDataFlowInfo, trace, headerInnerScope, constructor, descriptor
+                                        )
+                                    },
+                                    { scope ->
+                                        LexicalScopeImpl(
+                                            scope, descriptor, scope.isOwnerDescriptorAccessibleByLabel, scope.implicitReceiver,
+                                            LexicalScopeKind.CONSTRUCTOR_HEADER
+                                        )
+                                    })
     }
 
     private fun resolveSecondaryConstructorDelegationCall(
@@ -153,7 +151,7 @@ class BodyResolver(
 
         // if visit constructor that is already in current chain
         // such constructor is on cycle
-        val visitedInCurrentChain = HashSet<ConstructorDescriptor>()
+        val visitedInCurrentChain = hashSetOf<ConstructorDescriptor>()
         var currentConstructorDescriptor = constructorDescriptor
         while (true) {
             visitedInCurrentChain.add(currentConstructorDescriptor)
@@ -224,20 +222,19 @@ class BodyResolver(
         scopeForConstructorResolution: LexicalScope,
         scopeForMemberResolution: LexicalScope
     ) {
-        val scopeForConstructor = if (primaryConstructor == null)
-            null
-        else
-            FunctionDescriptorUtil.getFunctionInnerScope(scopeForConstructorResolution, primaryConstructor, trace, overloadChecker)
+        val scopeForConstructor = primaryConstructor?.let {
+            FunctionDescriptorUtil.getFunctionInnerScope(scopeForConstructorResolution, it, trace, overloadChecker)
+        }
         if (primaryConstructor == null) {
             checkRedeclarationsInClassHeaderWithoutPrimaryConstructor(descriptor, scopeForConstructorResolution)
         }
         val typeInferrer = expressionTypingServices // TODO : flow
 
-        val supertypes = Maps.newLinkedHashMap<KtTypeReference, KotlinType>()
-        val primaryConstructorDelegationCall = arrayOfNulls<ResolvedCall<*>>(1)
+        val supertypes = linkedMapOf<KtTypeReference, KotlinType>()
+        var primaryConstructorDelegationCall: ResolvedCall<*>? = null
         val visitor = object : KtVisitorVoid() {
             private fun recordSupertype(typeReference: KtTypeReference?, supertype: KotlinType?) {
-                if (supertype == null) return
+                if (supertype == null || typeReference == null) return
                 supertypes[typeReference] = supertype
             }
 
@@ -249,11 +246,8 @@ class BodyResolver(
                 recordSupertype(specifier.typeReference, supertype)
                 if (supertype != null) {
                     val declarationDescriptor = supertype.constructor.declarationDescriptor
-                    if (declarationDescriptor is ClassDescriptor) {
-                        val classDescriptor = declarationDescriptor as ClassDescriptor?
-                        if (classDescriptor!!.kind != ClassKind.INTERFACE) {
-                            trace.report(DELEGATION_NOT_TO_INTERFACE.on(specifier.typeReference!!))
-                        }
+                    if (declarationDescriptor is ClassDescriptor && declarationDescriptor.kind != ClassKind.INTERFACE) {
+                        trace.report(DELEGATION_NOT_TO_INTERFACE.on(specifier.typeReference!!))
                     }
                 }
                 val delegateExpression = specifier.delegateExpression
@@ -297,10 +291,9 @@ class BodyResolver(
                     val classDescriptor = TypeUtils.getClassDescriptor(supertype!!)
                     if (classDescriptor != null) {
                         // allow only one delegating constructor
-                        if (primaryConstructorDelegationCall[0] == null) {
-                            primaryConstructorDelegationCall[0] = results.resultingCall
-                        } else {
-                            primaryConstructorDelegationCall[0] = null
+                        primaryConstructorDelegationCall = when (primaryConstructorDelegationCall) {
+                            null -> results.resultingCall
+                            else -> null
                         }
                     }
                     // Recording type info for callee to use later in JetObjectLiteralExpression
@@ -340,10 +333,12 @@ class BodyResolver(
         }
 
         if (ktClass is KtEnumEntry && DescriptorUtils.isEnumEntry(descriptor) && ktClass.getSuperTypeListEntries().isEmpty()) {
-            assert(scopeForConstructor != null) { "Scope for enum class constructor should be non-null: $descriptor" }
-            resolveConstructorCallForEnumEntryWithoutInitializer(
+            if (scopeForConstructor == null) {
+                throw AssertionError("Scope for enum class constructor should be non-null: $descriptor")
+            }
+            primaryConstructorDelegationCall = resolveConstructorCallForEnumEntryWithoutInitializer(
                 ktClass, descriptor,
-                scopeForConstructor!!, outerDataFlowInfo, primaryConstructorDelegationCall
+                scopeForConstructor, outerDataFlowInfo, primaryConstructorDelegationCall
             )
         }
 
@@ -355,12 +350,12 @@ class BodyResolver(
             trace.report(SUPERTYPES_FOR_ANNOTATION_CLASS.on(ktClass.getSuperTypeList()!!))
         }
 
-        if (primaryConstructorDelegationCall[0] != null && primaryConstructor != null) {
+        if (primaryConstructorDelegationCall != null && primaryConstructor != null) {
             @Suppress("UNCHECKED_CAST")
             recordConstructorDelegationCall(
                 trace,
                 primaryConstructor,
-                primaryConstructorDelegationCall[0] as ResolvedCall<ConstructorDescriptor>
+                primaryConstructorDelegationCall as ResolvedCall<ConstructorDescriptor>
             )
         }
 
@@ -387,17 +382,17 @@ class BodyResolver(
         enumEntryDescriptor: ClassDescriptor,
         scopeForConstructor: LexicalScope,
         outerDataFlowInfo: DataFlowInfo,
-        primaryConstructorDelegationCall: Array<ResolvedCall<*>?>
-    ) {
+        primaryConstructorDelegationCall: ResolvedCall<*>?
+    ): ResolvedCall<*>? {
         assert(enumEntryDescriptor.kind == ClassKind.ENUM_ENTRY) { "Enum entry expected: $enumEntryDescriptor" }
         val enumClassDescriptor = enumEntryDescriptor.containingDeclaration as ClassDescriptor
-        if (enumClassDescriptor.kind != ClassKind.ENUM_CLASS) return
-        if (enumClassDescriptor.isExpect) return
+        if (enumClassDescriptor.kind != ClassKind.ENUM_CLASS) return primaryConstructorDelegationCall
+        if (enumClassDescriptor.isExpect) return primaryConstructorDelegationCall
 
         val applicableConstructors = getConstructorForEmptyArgumentsList(enumClassDescriptor)
         if (applicableConstructors.size != 1) {
             trace.report(ENUM_ENTRY_SHOULD_BE_INITIALIZED.on(ktEnumEntry))
-            return
+            return primaryConstructorDelegationCall
         }
 
         val ktInitializerList = KtPsiFactory(project, false).createEnumEntryInitializerList()
@@ -406,13 +401,13 @@ class BodyResolver(
         trace.record(BindingContext.TYPE, ktCallEntry.typeReference, enumClassDescriptor.defaultType)
         trace.record(BindingContext.CALL, ktEnumEntry, call)
         val results = callResolver.resolveFunctionCall(trace, scopeForConstructor, call, NO_EXPECTED_TYPE, outerDataFlowInfo, false)
-        if (primaryConstructorDelegationCall[0] == null) {
-            primaryConstructorDelegationCall[0] = results.resultingCall
-        }
+        return primaryConstructorDelegationCall ?: results.resultingCall
     }
 
     private fun getConstructorForEmptyArgumentsList(descriptor: ClassDescriptor): List<ClassConstructorDescriptor> {
-        return descriptor.constructors.filter { constructor -> constructor.valueParameters.all { parameter -> parameter.declaresDefaultValue() || parameter.varargElementType != null } }
+        return descriptor.constructors.filter { constructor ->
+            constructor.valueParameters.all { parameter -> parameter.declaresDefaultValue() || parameter.varargElementType != null }
+        }
     }
 
     // Returns a set of enum or sealed types of which supertypeOwner is an entry or a member
@@ -460,7 +455,7 @@ class BodyResolver(
         ktClassOrObject: KtClassOrObject
     ) {
         val allowedFinalSupertypes = getAllowedFinalSupertypes(supertypeOwner, supertypes, ktClassOrObject)
-        val typeConstructors = HashSet<TypeConstructor>()
+        val typeConstructors = hashSetOf<TypeConstructor>()
         var classAppeared = false
         for ((typeReference, supertype) in supertypes) {
 
@@ -618,20 +613,18 @@ class BodyResolver(
 
     private fun resolveConstructorPropertyDescriptors(ktClassOrObject: KtClassOrObject) {
         for (parameter in ktClassOrObject.primaryConstructorParameters) {
-            val descriptor = trace.bindingContext.get(BindingContext.PRIMARY_CONSTRUCTOR_PARAMETER, parameter)
-            if (descriptor != null) {
-                ForceResolveUtil.forceResolveAllContents(descriptor.annotations)
+            val descriptor = trace.bindingContext.get(BindingContext.PRIMARY_CONSTRUCTOR_PARAMETER, parameter) ?: continue
+            ForceResolveUtil.forceResolveAllContents(descriptor.annotations)
 
-                if (languageVersionSettings.supportsFeature(LanguageFeature.ProhibitErroneousExpressionsInAnnotationsWithUseSiteTargets)) {
-                    val getterDescriptor = descriptor.getter
-                    if (getterDescriptor != null) {
-                        ForceResolveUtil.forceResolveAllContents(getterDescriptor.annotations)
-                    }
+            if (languageVersionSettings.supportsFeature(LanguageFeature.ProhibitErroneousExpressionsInAnnotationsWithUseSiteTargets)) {
+                val getterDescriptor = descriptor.getter
+                if (getterDescriptor != null) {
+                    ForceResolveUtil.forceResolveAllContents(getterDescriptor.annotations)
+                }
 
-                    val setterDescriptor = descriptor.setter
-                    if (setterDescriptor != null) {
-                        ForceResolveUtil.forceResolveAllContents(setterDescriptor.annotations)
-                    }
+                val setterDescriptor = descriptor.setter
+                if (setterDescriptor != null) {
+                    ForceResolveUtil.forceResolveAllContents(setterDescriptor.annotations)
                 }
             }
         }
@@ -680,7 +673,7 @@ class BodyResolver(
     private fun resolvePropertyDeclarationBodies(c: BodiesResolveContext) {
 
         // Member properties
-        val processed = HashSet<KtProperty>()
+        val processed = hashSetOf<KtProperty>()
         for ((key, _) in c.declaredClasses) {
             if (key !is KtClass) continue
 
@@ -826,27 +819,27 @@ class BodyResolver(
     ) {
         computeDeferredType(functionDescriptor.returnType)
 
-        resolveFunctionBody(outerDataFlowInfo, trace, function, functionDescriptor, declaringScope, null, null)
+        resolveFunctionBodyInternal(outerDataFlowInfo, trace, function, functionDescriptor, declaringScope)
 
         assert(functionDescriptor.returnType != null)
     }
 
-    private fun resolveFunctionBody(
+    private fun resolveFunctionBodyInternal(
         outerDataFlowInfo: DataFlowInfo,
         trace: BindingTrace,
         function: KtDeclarationWithBody,
         functionDescriptor: FunctionDescriptor,
         scope: LexicalScope,
-        beforeBlockBody: Function1<LexicalScope, DataFlowInfo?>?,
+        beforeBlockBody: (LexicalScope) -> DataFlowInfo? = { null },
         // Creates wrapper scope for header resolution if necessary (see resolveSecondaryConstructorBody)
-        headerScopeFactory: Function1<LexicalScope, LexicalScope>?
+        headerScopeFactory: (LexicalScope) -> LexicalScope = { it }
     ) {
         PreliminaryDeclarationVisitor.createForDeclaration(function, trace, languageVersionSettings)
         var innerScope = FunctionDescriptorUtil.getFunctionInnerScope(scope, functionDescriptor, trace, overloadChecker)
         val valueParameters = function.valueParameters
         val valueParameterDescriptors = functionDescriptor.valueParameters
 
-        val headerScope = headerScopeFactory?.invoke(innerScope) ?: innerScope
+        val headerScope = headerScopeFactory(innerScope)
         valueParameterResolver.resolveValueParameters(
             valueParameters, valueParameterDescriptors, headerScope, outerDataFlowInfo, trace
         )
@@ -870,15 +863,11 @@ class BodyResolver(
             }
         }
 
-        var dataFlowInfo: DataFlowInfo? = null
-
-        if (beforeBlockBody != null) {
-            dataFlowInfo = beforeBlockBody.invoke(headerScope)
-        }
+        val dataFlowInfo = beforeBlockBody(headerScope) ?: outerDataFlowInfo
 
         if (function.hasBody()) {
             expressionTypingServices.checkFunctionReturnType(
-                innerScope, function, functionDescriptor, dataFlowInfo ?: outerDataFlowInfo, null, trace
+                innerScope, function, functionDescriptor, dataFlowInfo, null, trace
             )
         }
 
@@ -905,11 +894,8 @@ class BodyResolver(
         // fun f() = { f() }
         // val x = x
         // type resolution must be started before body resolution
-        if (type is DeferredType) {
-            val deferredType = type as DeferredType?
-            if (!deferredType!!.isComputed()) {
-                deferredType.delegate
-            }
+        if (type is DeferredType && !type.isComputed()) {
+            type.delegate
         }
     }
 
