@@ -4022,6 +4022,11 @@ public class LocalInspectionTestGenerated extends AbstractLocalInspectionTest {
             KotlinTestUtils.runTest(this::doTest, TargetBackend.ANY, testDataFilePath);
         }
 
+        @TestMetadata("abstractClassAndInterface.kt")
+        public void testAbstractClassAndInterface() throws Exception {
+            runTest("idea/testData/inspectionsLocal/redundantOverride/abstractClassAndInterface.kt");
+        }
+
         public void testAllFilesPresentInRedundantOverride() throws Exception {
             KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("idea/testData/inspectionsLocal/redundantOverride"), Pattern.compile("^([\\w\\-_]+)\\.(kt|kts)$"), TargetBackend.ANY, true);
         }
@@ -4046,9 +4051,19 @@ public class LocalInspectionTestGenerated extends AbstractLocalInspectionTest {
             runTest("idea/testData/inspectionsLocal/redundantOverride/basic.kt");
         }
 
+        @TestMetadata("boxedParameters.kt")
+        public void testBoxedParameters() throws Exception {
+            runTest("idea/testData/inspectionsLocal/redundantOverride/boxedParameters.kt");
+        }
+
         @TestMetadata("callDifferentSuperMethod.kt")
         public void testCallDifferentSuperMethod() throws Exception {
             runTest("idea/testData/inspectionsLocal/redundantOverride/callDifferentSuperMethod.kt");
+        }
+
+        @TestMetadata("classAndInterface.kt")
+        public void testClassAndInterface() throws Exception {
+            runTest("idea/testData/inspectionsLocal/redundantOverride/classAndInterface.kt");
         }
 
         @TestMetadata("dataClass.kt")
@@ -4094,6 +4109,11 @@ public class LocalInspectionTestGenerated extends AbstractLocalInspectionTest {
         @TestMetadata("singleExpressionFunction.kt")
         public void testSingleExpressionFunction() throws Exception {
             runTest("idea/testData/inspectionsLocal/redundantOverride/singleExpressionFunction.kt");
+        }
+
+        @TestMetadata("twoInterfaces.kt")
+        public void testTwoInterfaces() throws Exception {
+            runTest("idea/testData/inspectionsLocal/redundantOverride/twoInterfaces.kt");
         }
 
         @TestMetadata("useGenericsSuper.kt")
