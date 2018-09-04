@@ -8,7 +8,6 @@ package org.jetbrains.kotlin.codegen
 
 import com.intellij.psi.PsiElement
 import org.jetbrains.kotlin.backend.common.CodegenUtil.getNonPrivateTraitMethods
-import org.jetbrains.kotlin.backend.common.bridges.findImplementationFromInterface
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.builtins.UnsignedTypes
 import org.jetbrains.kotlin.codegen.context.CodegenContext
@@ -50,6 +49,7 @@ import org.jetbrains.kotlin.types.ErrorUtils
 import org.jetbrains.kotlin.types.KotlinType
 import org.jetbrains.kotlin.types.TypeUtils
 import org.jetbrains.kotlin.types.checker.KotlinTypeChecker
+import org.jetbrains.kotlin.util.findImplementationFromInterface
 import org.jetbrains.kotlin.utils.DFS
 import org.jetbrains.org.objectweb.asm.Label
 import org.jetbrains.org.objectweb.asm.Type

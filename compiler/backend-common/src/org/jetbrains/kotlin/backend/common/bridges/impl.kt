@@ -22,6 +22,7 @@ import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.resolve.DescriptorUtils
 import org.jetbrains.kotlin.resolve.OverridingUtil
 import org.jetbrains.kotlin.resolve.calls.callResolverUtil.isOrOverridesSynthesized
+import org.jetbrains.kotlin.util.findImplementationFromInterface
 
 fun <Signature> generateBridgesForFunctionDescriptor(
     descriptor: FunctionDescriptor,
@@ -109,21 +110,6 @@ fun findInterfaceImplementation(descriptor: CallableMemberDescriptor): CallableM
     }
 
     return immediateConcreteSuper
-}
-
-/**
- * Given a fake override, returns an overridden non-abstract function from an interface which is the actual implementation of this function
- * that should be called when the given fake override is called.
- */
-fun findImplementationFromInterface(descriptor: CallableMemberDescriptor): CallableMemberDescriptor? {
-    val overridden = OverridingUtil.getOverriddenDeclarations(descriptor)
-    val filtered = OverridingUtil.filterOutOverridden(overridden)
-
-    val result = filtered.firstOrNull { it.modality != Modality.ABSTRACT } ?: return null
-
-    if (DescriptorUtils.isClassOrEnumClass(result.containingDeclaration)) return null
-
-    return result
 }
 
 /**
