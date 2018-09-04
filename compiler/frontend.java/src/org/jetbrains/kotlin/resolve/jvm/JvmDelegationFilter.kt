@@ -23,17 +23,16 @@ import org.jetbrains.kotlin.descriptors.CallableMemberDescriptor
 import org.jetbrains.kotlin.descriptors.Modality
 import org.jetbrains.kotlin.descriptors.deserialization.PLATFORM_DEPENDENT_ANNOTATION_FQ_NAME
 import org.jetbrains.kotlin.load.java.descriptors.JavaMethodDescriptor
-import org.jetbrains.kotlin.resolve.DescriptorUtils
 import org.jetbrains.kotlin.resolve.jvm.annotations.hasJvmDefaultAnnotation
 import org.jetbrains.kotlin.resolve.lazy.DelegationFilter
+import org.jetbrains.kotlin.util.findImplementationFromInterface
 
 object JvmDelegationFilter : DelegationFilter {
 
     override fun filter(interfaceMember: CallableMemberDescriptor, languageVersionSettings: LanguageVersionSettings): Boolean {
         if (!languageVersionSettings.supportsFeature(LanguageFeature.NoDelegationToJavaDefaultInterfaceMembers)) return true
 
-        //We always have only one implementation otherwise it's an error in kotlin and java
-        val realMember = DescriptorUtils.unwrapFakeOverride(interfaceMember)
+        val realMember = findImplementationFromInterface(interfaceMember) ?: interfaceMember
         return !isJavaDefaultMethod(realMember) &&
                 !realMember.hasJvmDefaultAnnotation() &&
                 !isBuiltInMemberMappedToJavaDefault(realMember)

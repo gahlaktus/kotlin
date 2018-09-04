@@ -566,6 +566,16 @@ public class BlackBoxWithJava8CodegenTestGenerated extends AbstractBlackBoxCodeg
                     KotlinTestUtils.assertAllTestsPresentByMetadata(this.getClass(), new File("compiler/testData/codegen/java8/box/jvm8/defaults/delegationBy"), Pattern.compile("^(.+)\\.kt$"), TargetBackend.ANY, true);
                 }
 
+                @TestMetadata("diamond.kt")
+                public void testDiamond() throws Exception {
+                    runTest("compiler/testData/codegen/java8/box/jvm8/defaults/delegationBy/diamond.kt");
+                }
+
+                @TestMetadata("diamondProperty.kt")
+                public void testDiamondProperty() throws Exception {
+                    runTest("compiler/testData/codegen/java8/box/jvm8/defaults/delegationBy/diamondProperty.kt");
+                }
+
                 @TestMetadata("simple.kt")
                 public void testSimple() throws Exception {
                     runTest("compiler/testData/codegen/java8/box/jvm8/defaults/delegationBy/simple.kt");
