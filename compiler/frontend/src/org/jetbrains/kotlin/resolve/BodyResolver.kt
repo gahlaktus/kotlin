@@ -46,6 +46,8 @@ import org.jetbrains.kotlin.config.LanguageFeature.TopLevelSealedInheritance
 import org.jetbrains.kotlin.diagnostics.Errors.*
 import org.jetbrains.kotlin.resolve.BindingContext.*
 import org.jetbrains.kotlin.resolve.descriptorUtil.isEffectivelyExternal
+import org.jetbrains.kotlin.resolve.descriptorUtil.module
+import org.jetbrains.kotlin.resolve.multiplatform.ExpectedActualResolver
 import org.jetbrains.kotlin.types.TypeUtils.NO_EXPECTED_TYPE
 
 class BodyResolver(
@@ -411,31 +413,37 @@ class BodyResolver(
     }
 
     // Returns a set of enum or sealed types of which supertypeOwner is an entry or a member
-    private fun getAllowedFinalSupertypes(
+    private fun getAllowedFinalSuperClassifiers(
         descriptor: ClassDescriptor,
         supertypes: Map<KtTypeReference, KotlinType>,
         ktClassOrObject: KtClassOrObject
-    ): Set<TypeConstructor> {
+    ): Set<ClassifierDescriptorWithTypeParameters> {
         return if (ktClassOrObject is KtEnumEntry) {
-            setOf((descriptor.containingDeclaration as ClassDescriptor).typeConstructor)
+            setOf(descriptor.containingDeclaration as ClassDescriptor)
         } else if (languageVersionSettings.supportsFeature(TopLevelSealedInheritance) && DescriptorUtils.isTopLevelDeclaration(descriptor)) {
-            var parentEnumOrSealed = emptySet<TypeConstructor>()
+            var parentEnumOrSealed = emptySet<ClassDescriptor>()
             // TODO: improve diagnostic when top level sealed inheritance is disabled
             for (supertype in supertypes.values) {
                 val classifierDescriptor = supertype.constructor.declarationDescriptor
                 if (DescriptorUtils.isSealedClass(classifierDescriptor) && DescriptorUtils.isTopLevelDeclaration(classifierDescriptor)) {
-                    parentEnumOrSealed = setOf(classifierDescriptor!!.typeConstructor)
+                    parentEnumOrSealed = setOf(classifierDescriptor as ClassDescriptor)
                 }
             }
             parentEnumOrSealed
         } else {
-            var currentDescriptor = descriptor
-            val parentEnumOrSealed = mutableSetOf<TypeConstructor>()
-            while (currentDescriptor.containingDeclaration is ClassDescriptor) {
-                currentDescriptor = currentDescriptor.containingDeclaration as ClassDescriptor
+            var currentDescriptor = descriptor.containingDeclaration
+            val parentEnumOrSealed = mutableSetOf<ClassifierDescriptorWithTypeParameters>()
+            while (currentDescriptor is ClassDescriptor) {
                 if (DescriptorUtils.isSealedClass(currentDescriptor)) {
-                    parentEnumOrSealed.add(currentDescriptor.typeConstructor)
+                    parentEnumOrSealed.add(currentDescriptor)
+                    if (currentDescriptor.isExpect) {
+                        val actualDescriptors = with(ExpectedActualResolver) {
+                            (currentDescriptor as ClassDescriptor).findCompatibleActualForExpected(currentDescriptor.module)
+                        }
+                        parentEnumOrSealed.addAll(actualDescriptors.filterIsInstance())
+                    }
                 }
+                currentDescriptor = currentDescriptor.containingDeclaration
             }
             parentEnumOrSealed
         }
@@ -454,7 +462,7 @@ class BodyResolver(
         supertypes: Map<KtTypeReference, KotlinType>,
         ktClassOrObject: KtClassOrObject
     ) {
-        val allowedFinalSupertypes = getAllowedFinalSupertypes(supertypeOwner, supertypes, ktClassOrObject)
+        val allowedFinalSuperClassifiers = getAllowedFinalSuperClassifiers(supertypeOwner, supertypes, ktClassOrObject)
         val typeConstructors = hashSetOf<TypeConstructor>()
         var classAppeared = false
         for ((typeReference, supertype) in supertypes) {
@@ -532,7 +540,13 @@ class BodyResolver(
                 if (!DescriptorUtils.isEnumEntry(classDescriptor)) {
                     trace.report(SINGLETON_IN_SUPERTYPE.on(typeReference))
                 }
-            } else if (!allowedFinalSupertypes.contains(constructor)) {
+            } else if (allowedFinalSuperClassifiers.none { superClassifier ->
+                    constructor == when (superClassifier) {
+                        is TypeAliasDescriptor -> superClassifier.expandedType.constructor
+                        else -> superClassifier.typeConstructor
+                    }
+                }
+            ) {
                 if (DescriptorUtils.isSealedClass(classDescriptor)) {
                     var containingDescriptor: DeclarationDescriptor? = supertypeOwner.containingDeclaration
                     while (containingDescriptor != null && containingDescriptor !== classDescriptor) {
