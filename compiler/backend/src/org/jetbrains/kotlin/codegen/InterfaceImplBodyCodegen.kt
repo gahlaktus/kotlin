@@ -21,10 +21,12 @@ import org.jetbrains.kotlin.backend.common.bridges.findImplementationFromInterfa
 import org.jetbrains.kotlin.backend.common.bridges.firstSuperMethodFromKotlin
 import org.jetbrains.kotlin.codegen.context.ClassContext
 import org.jetbrains.kotlin.codegen.state.GenerationState
+import org.jetbrains.kotlin.config.JvmDefaultMode
 import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.load.java.descriptors.JavaMethodDescriptor
 import org.jetbrains.kotlin.psi.KtPureClassOrObject
 import org.jetbrains.kotlin.resolve.DescriptorToSourceUtils
+import org.jetbrains.kotlin.resolve.jvm.annotations.hasJvmDefaultAnnotation
 import org.jetbrains.kotlin.resolve.jvm.diagnostics.JvmDeclarationOrigin
 import org.jetbrains.kotlin.resolve.jvm.diagnostics.JvmDeclarationOriginKind
 import org.jetbrains.kotlin.resolve.jvm.jvmSignature.JvmMethodSignature
@@ -70,7 +72,9 @@ class InterfaceImplBodyCodegen(
             val implementation = findImplementationFromInterface(memberDescriptor) ?: continue
 
             // If implementation is a default interface method (JVM 8 only)
-            if (implementation.isDefinitelyNotDefaultImplsMethod()) continue
+            if (implementation.isDefinitelyNotDefaultImplsMethod() &&
+                !(state.jvmDefaultMode == JvmDefaultMode.ENABLE_WITH_DEFAULT_IMPLS && implementation.hasJvmDefaultAnnotation())
+            ) continue
 
             if (memberDescriptor is FunctionDescriptor) {
                 generateDelegationToSuperDefaultImpls(memberDescriptor, implementation as FunctionDescriptor)

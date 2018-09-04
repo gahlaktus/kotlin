@@ -6,13 +6,12 @@
 package org.jetbrains.kotlin.backend.jvm.lower
 
 import org.jetbrains.kotlin.backend.common.ClassLoweringPass
-import org.jetbrains.kotlin.backend.common.CodegenUtil
 import org.jetbrains.kotlin.backend.jvm.JvmBackendContext
 import org.jetbrains.kotlin.backend.jvm.JvmLoweredStatementOrigin
 import org.jetbrains.kotlin.backend.jvm.codegen.isJvmInterface
 import org.jetbrains.kotlin.backend.jvm.descriptors.DefaultImplsClassDescriptor
 import org.jetbrains.kotlin.codegen.FunctionCodegen
-import org.jetbrains.kotlin.codegen.isDefinitelyNotDefaultImplsMethod
+import org.jetbrains.kotlin.codegen.getNonPrivateNonDefaultTraitMethods
 import org.jetbrains.kotlin.codegen.state.GenerationState
 import org.jetbrains.kotlin.descriptors.FunctionDescriptor
 import org.jetbrains.kotlin.ir.UNDEFINED_OFFSET
@@ -45,9 +44,8 @@ class InterfaceDelegationLowering(val context: JvmBackendContext) : IrElementTra
         val irClassDescriptor = irClass.descriptor
         val actualClassDescriptor = (irClassDescriptor as? DefaultImplsClassDescriptor)?.correspondingInterface ?: irClassDescriptor
         val isDefaultImplsGeneration = actualClassDescriptor !== irClassDescriptor
-        for ((interfaceFun, value) in CodegenUtil.getNonPrivateTraitMethods(actualClassDescriptor, !isDefaultImplsGeneration)) {
-            //skip java 8 default methods
-            if (!interfaceFun.isDefinitelyNotDefaultImplsMethod() && !FunctionCodegen.isMethodOfAny(interfaceFun)) {
+        for ((interfaceFun, value) in getNonPrivateNonDefaultTraitMethods(actualClassDescriptor, copy = !isDefaultImplsGeneration)) {
+            if (!FunctionCodegen.isMethodOfAny(interfaceFun)) {
                 generateDelegationToDefaultImpl(
                     irClass, context.ir.symbols.externalSymbolTable.referenceSimpleFunction(
                         interfaceFun.original

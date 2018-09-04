@@ -56,9 +56,19 @@ public class WriteFlagsTestGenerated extends AbstractWriteFlagsTest {
             runTest("compiler/testData/codegen/java8/writeFlags/defaults/defaultMethod.kt");
         }
 
+        @TestMetadata("defaultMethodInDiamond.kt")
+        public void testDefaultMethodInDiamond() throws Exception {
+            runTest("compiler/testData/codegen/java8/writeFlags/defaults/defaultMethodInDiamond.kt");
+        }
+
         @TestMetadata("defaultProperty.kt")
         public void testDefaultProperty() throws Exception {
             runTest("compiler/testData/codegen/java8/writeFlags/defaults/defaultProperty.kt");
+        }
+
+        @TestMetadata("defaultPropertyInDiamond.kt")
+        public void testDefaultPropertyInDiamond() throws Exception {
+            runTest("compiler/testData/codegen/java8/writeFlags/defaults/defaultPropertyInDiamond.kt");
         }
 
         @TestMetadata("propertyAnnotation.kt")

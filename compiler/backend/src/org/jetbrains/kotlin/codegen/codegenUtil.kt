@@ -7,6 +7,8 @@
 package org.jetbrains.kotlin.codegen
 
 import com.intellij.psi.PsiElement
+import org.jetbrains.kotlin.backend.common.CodegenUtil.getNonPrivateTraitMethods
+import org.jetbrains.kotlin.backend.common.bridges.findImplementationFromInterface
 import org.jetbrains.kotlin.builtins.KotlinBuiltIns
 import org.jetbrains.kotlin.builtins.UnsignedTypes
 import org.jetbrains.kotlin.codegen.context.CodegenContext
@@ -39,6 +41,7 @@ import org.jetbrains.kotlin.resolve.calls.model.ResolvedCall
 import org.jetbrains.kotlin.resolve.descriptorUtil.builtIns
 import org.jetbrains.kotlin.resolve.isInlineClassType
 import org.jetbrains.kotlin.resolve.jvm.JvmClassName
+import org.jetbrains.kotlin.resolve.jvm.annotations.hasJvmDefaultAnnotation
 import org.jetbrains.kotlin.resolve.jvm.diagnostics.JvmDeclarationOrigin
 import org.jetbrains.kotlin.resolve.scopes.receivers.TransientReceiver
 import org.jetbrains.kotlin.serialization.deserialization.descriptors.DeserializedMemberDescriptor
@@ -212,8 +215,19 @@ fun sortTopLevelClassesAndPrepareContextForSealedClasses(
     return result
 }
 
+
+@JvmOverloads
+fun getNonPrivateNonDefaultTraitMethods(
+    descriptor: ClassDescriptor,
+    copy: Boolean = true
+): Map<FunctionDescriptor, FunctionDescriptor> =
+    getNonPrivateTraitMethods(descriptor, copy) {
+        //skip java 8 default methods
+        !(findImplementationFromInterface(it) ?: it).isDefinitelyNotDefaultImplsMethod()
+    }
+
 fun CallableMemberDescriptor.isDefinitelyNotDefaultImplsMethod() =
-    this is JavaCallableMemberDescriptor || this.annotations.hasAnnotation(PLATFORM_DEPENDENT_ANNOTATION_FQ_NAME)
+    this is JavaCallableMemberDescriptor || this.annotations.hasAnnotation(PLATFORM_DEPENDENT_ANNOTATION_FQ_NAME) || hasJvmDefaultAnnotation()
 
 
 fun ClassBuilder.generateMethod(

@@ -50,15 +50,21 @@ object CodegenUtil {
 
     @JvmStatic
     @JvmOverloads
-    fun getNonPrivateTraitMethods(descriptor: ClassDescriptor, copy: Boolean = true): Map<FunctionDescriptor, FunctionDescriptor> {
+    fun getNonPrivateTraitMethods(
+        descriptor: ClassDescriptor,
+        copy: Boolean = true,
+        filter: (CallableMemberDescriptor) -> Boolean = { true }
+    ): Map<FunctionDescriptor, FunctionDescriptor> {
         val result = linkedMapOf<FunctionDescriptor, FunctionDescriptor>()
         for (declaration in DescriptorUtils.getAllDescriptors(descriptor.defaultType.memberScope)) {
             if (declaration !is CallableMemberDescriptor) continue
 
             val traitMember = findInterfaceImplementation(declaration)
             if (traitMember == null ||
-                    Visibilities.isPrivate(traitMember.visibility) ||
-                    traitMember.visibility == Visibilities.INVISIBLE_FAKE) continue
+                Visibilities.isPrivate(traitMember.visibility) ||
+                traitMember.visibility == Visibilities.INVISIBLE_FAKE ||
+                !filter(traitMember)
+            ) continue
 
             assert(traitMember.modality !== Modality.ABSTRACT) { "Cannot delegate to abstract trait method: $declaration" }
 
