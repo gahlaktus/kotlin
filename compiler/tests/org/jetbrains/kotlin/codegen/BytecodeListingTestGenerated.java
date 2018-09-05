@@ -158,6 +158,11 @@ public class BytecodeListingTestGenerated extends AbstractBytecodeListingTest {
         runTest("compiler/testData/codegen/bytecodeListing/samAdapterAndInlinedOne.kt");
     }
 
+    @TestMetadata("suspendClassSyntheticConstructor.kt")
+    public void testSuspendClassSyntheticConstructor() throws Exception {
+        runTest("compiler/testData/codegen/bytecodeListing/suspendClassSyntheticConstructor.kt");
+    }
+
     @TestMetadata("suspendReifiedFun.kt")
     public void testSuspendReifiedFun_1_2() throws Exception {
         runTestWithPackageReplacement("compiler/testData/codegen/bytecodeListing/suspendReifiedFun.kt", "kotlin.coroutines.experimental");

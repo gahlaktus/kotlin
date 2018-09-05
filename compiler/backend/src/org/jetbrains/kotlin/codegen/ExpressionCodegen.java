@@ -2080,12 +2080,17 @@ public class ExpressionCodegen extends KtVisitor<StackValue, StackValue> impleme
         boolean directAccessToSetter = couldUseDirectAccessToProperty(propertyDescriptor, false, isDelegatedProperty, context,
                                                                               state.getShouldInlineConstVals());
 
+        boolean isThereAnyInlineNonPrivateContext = context.getFirstCrossInlineOrNonInlineContext().isThereAnyInlineNonPrivateContext();
+
         if (fieldAccessorKind == AccessorKind.LATEINIT_INTRINSIC) {
             skipPropertyAccessors = !isPrivateProperty || context.getClassOrPackageParentContext() == backingFieldContext;
 
             if (!skipPropertyAccessors) {
                 propertyDescriptor = (AccessorForPropertyBackingField)
-                        backingFieldContext.getAccessor(propertyDescriptor, fieldAccessorKind, delegateType, superCallTarget);
+                        backingFieldContext.getAccessor(
+                                propertyDescriptor, fieldAccessorKind,
+                                delegateType, superCallTarget, isThereAnyInlineNonPrivateContext
+                        );
             }
             ownerDescriptor = propertyDescriptor;
         }
@@ -2097,7 +2102,8 @@ public class ExpressionCodegen extends KtVisitor<StackValue, StackValue> impleme
             if (!skipPropertyAccessors) {
                 //noinspection ConstantConditions
                 propertyDescriptor = (PropertyDescriptor) backingFieldContext.getAccessor(
-                        propertyDescriptor, fieldAccessorKind, delegateType, superCallTarget
+                        propertyDescriptor, fieldAccessorKind, delegateType, superCallTarget,
+                        isThereAnyInlineNonPrivateContext
                 );
                 assert propertyDescriptor instanceof AccessorForPropertyBackingField :
                         "Unexpected accessor descriptor: " + propertyDescriptor;

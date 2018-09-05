@@ -6,8 +6,9 @@ package test
 
 private fun ok() = "OK"
 
-internal inline fun inlineFun(lambda: () -> String = ::ok): String {
-    return lambda()
+internal inline fun inlineFun(): String {
+    val x: () -> String = { ok() }
+    return x()
 }
 
 // FILE: 2.kt
